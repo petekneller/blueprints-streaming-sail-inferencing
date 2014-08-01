@@ -14,6 +14,29 @@ public class PushTransactionEventHandler implements TransactionEventHandler<Obje
     private int id = 1;
 
     public void afterCommit(TransactionData transactionData, Object o) {
+    }
+
+    // Helper method to extract the name without the namespace
+    private String getName(String uri) {
+        return uri.substring(uri.lastIndexOf("/")+1);
+    }
+
+    public Object beforeCommit(TransactionData transactionData) throws Exception {
+        try {
+            doStuff(transactionData);
+        } finally {
+            return null;
+        }
+    }
+
+    public void afterRollback(TransactionData transactionData, Object o) {
+    }
+
+    // The below _used_ to live in afterCommit, but I found the call to
+    // node.getProperty for start and end req'd a tx available - which is complete
+    // by the time this gets called.
+    // Moving the call to beforeCommit solved this
+    private void doStuff(TransactionData transactionData) {
         // Retrieve the created relationships. (The relevant nodes will be retrieved through these relationships)
         Iterable<Relationship> relationships = transactionData.createdRelationships();
 
@@ -38,18 +61,6 @@ public class PushTransactionEventHandler implements TransactionEventHandler<Obje
                 PushUtility.pushEdge(id++, start, end, predicate, inferred);
             }
         }
-    }
-
-    // Helper method to extract the name without the namespace
-    private String getName(String uri) {
-        return uri.substring(uri.lastIndexOf("/")+1);
-    }
-
-    public Object beforeCommit(TransactionData transactionData) throws Exception {
-        return null;
-    }
-
-    public void afterRollback(TransactionData transactionData, Object o) {
     }
 
 }

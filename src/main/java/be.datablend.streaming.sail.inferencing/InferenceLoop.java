@@ -1,8 +1,8 @@
 package be.datablend.streaming.sail.inferencing;
 
-import com.tinkerpop.blueprints.pgm.TransactionalGraph;
-import com.tinkerpop.blueprints.pgm.impls.neo4j.Neo4jGraph;
-import com.tinkerpop.blueprints.pgm.oupls.sail.GraphSail;
+import com.tinkerpop.blueprints.TransactionalGraph;
+import com.tinkerpop.blueprints.impls.neo4j2.Neo4j2Graph;
+import com.tinkerpop.blueprints.oupls.sail.GraphSail;
 import org.openrdf.model.URI;
 import org.openrdf.model.impl.URIImpl;
 import org.openrdf.sail.*;
@@ -16,15 +16,14 @@ import java.util.Scanner;
  */
 public class InferenceLoop {
 
-    private Neo4jGraph neograph;
+    private Neo4j2Graph neograph;
     private NotifyingSail sail;
     private NotifyingSailConnection connection;
 
     // Setup the Foward chaing RDFS inferencer
     public InferenceLoop() throws SailException {
-        neograph = new Neo4jGraph("var/rdf");
-        neograph.setMaxBufferSize(0);
-        neograph.getRawGraph().registerTransactionEventHandler(new PushTransactionEventHandler());
+        neograph = new Neo4j2Graph("var/rdf");
+        neograph.getRawGraph().registerTransactionEventHandler(new be.datablend.streaming.sail.inferencing.PushTransactionEventHandler());
         sail = new ForwardChainingRDFSInferencer(new GraphSail(neograph));
         sail.initialize();
         connection = sail.getConnection();
@@ -33,7 +32,7 @@ public class InferenceLoop {
 
     // Add the inference
     public void inference(URI subject, URI predicate, URI object) throws SailException, InterruptedException {
-        neograph.startTransaction();
+        connection.begin();
         connection.addStatement(subject, predicate, object);
         connection.commit();
         neograph.stopTransaction(TransactionalGraph.Conclusion.SUCCESS);
@@ -46,17 +45,15 @@ public class InferenceLoop {
     }
 
     /* Try it out adding the following statements:
-   *
-   * http://datablend.be/example/teaches http://www.w3.org/2000/01/rdf-schema#domain http://datablend.be/example/teacher
-   * http://datablend.be/example/teaches http://www.w3.org/2000/01/rdf-schema#range http://datablend.be/example/student
-   * http://datablend.be/example/Davy http://datablend.be/example/teaches http://datablend.be/example/Bob
-   *
-   * http://datablend.be/example/teacher http://www.w3.org/2000/01/rdf-schema#subClassOf http://datablend.be/example/person
-   * http://datablend.be/example/student http://www.w3.org/2000/01/rdf-schema#subClassOf http://datablend.be/example/person
-   *
-   * http://datablend.be/example/Bob http://datablend.be/example/teaches http://datablend.be/example/Davy
-   *
-   * */
+http://datablend.be/example/teaches http://www.w3.org/2000/01/rdf-schema#domain http://datablend.be/example/teacher
+http://datablend.be/example/teaches http://www.w3.org/2000/01/rdf-schema#range http://datablend.be/example/student
+http://datablend.be/example/Davy http://datablend.be/example/teaches http://datablend.be/example/Bob
+
+http://datablend.be/example/teacher http://www.w3.org/2000/01/rdf-schema#subClassOf http://datablend.be/example/person
+http://datablend.be/example/student http://www.w3.org/2000/01/rdf-schema#subClassOf http://datablend.be/example/person
+
+http://datablend.be/example/Bob http://datablend.be/example/teaches http://datablend.be/example/Davy
+   */
     public static void main(String[] args) throws SailException, InterruptedException {
         InferenceLoop loop = new InferenceLoop();
         Scanner in = new Scanner(System.in);
